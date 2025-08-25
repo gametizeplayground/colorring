@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Color Ring - Mobile Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DynaPuff', cursive;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3a 100%);
+            overflow: hidden;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: pointer;
+        }
+        
+        #gameCanvas.menu-cursor {
+            cursor: pointer;
+        }
+        
+        /* Game cursor styling removed - cursor stays visible */
+
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #score {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 90px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #trophy {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #FFD700;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .trophy-icon {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.8));
+        }
+        
+        #comboCounter {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #FFD700;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 6px 12px;
+            border-radius: 15px;
+            border: 1px solid #FFD700;
+        }
+        
+        .music-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #FFD700;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+            z-index: 25;
+        }
+        
+        .music-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+        
+        .music-btn.muted {
+            border-color: #888;
+        }
+        
+        .music-icon {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            filter: brightness(0) saturate(100%) invert(83%) sepia(31%) saturate(638%) hue-rotate(359deg) brightness(103%) contrast(107%);
+            transition: all 0.3s ease;
+        }
+        
+        .music-btn.muted .music-icon {
+            filter: brightness(0) saturate(100%) invert(53%) sepia(0%) saturate(0%) hue-rotate(93deg) brightness(94%) contrast(88%);
+        }
+
+        #gameTitle {
+            position: absolute;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 15;
+        }
+
+        .titleColor {
+            color: white;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            line-height: 1.2;
+        }
+
+        .titleRing {
+            color: white;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            line-height: 1.2;
+        }
+
+        /* Game state styling */
+        #gameTitle.gameMode .titleColor,
+        #gameTitle.gameMode .titleRing {
+            color: white;
+            font-size: 90px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            top: 120px; /* Move current score closer to trophy */
+        }
+
+        #startScreenElements {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            pointer-events: none;
+        }
+
+        #demoRings {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 200px;
+        }
+
+        .demoRing {
+            position: absolute;
+            border-radius: 50%;
+            border: 8px solid;
+            box-shadow: 0 0 20px currentColor;
+        }
+
+        .demoRing.outer {
+            width: 180px;
+            height: 180px;
+            border-color: #FFD700;
+            top: 10px;
+            left: 10px;
+            animation: ringGlow 3s ease-in-out infinite alternate;
+        }
+
+        .demoRing.middle {
+            width: 140px;
+            height: 140px;
+            border-color: #FF69B4;
+            top: 30px;
+            left: 30px;
+            animation: ringGlow 3s ease-in-out infinite alternate 0.5s;
+        }
+
+        .demoRing.inner {
+            width: 100px;
+            height: 100px;
+            border-color: #00FFFF;
+            top: 50px;
+            left: 50px;
+            animation: ringGlow 3s ease-in-out infinite alternate 1s;
+        }
+
+        @keyframes ringGlow {
+            0% { box-shadow: 0 0 20px currentColor; }
+            100% { box-shadow: 0 0 40px currentColor, 0 0 60px currentColor; }
+        }
+
+        #demoBall {
+            position: absolute;
+            top: 160px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #FF6B35, #FF4500);
+            border-radius: 50%;
+            box-shadow: 
+                0 0 20px #FF6B35,
+                inset 0 0 20px rgba(255, 255, 255, 0.3),
+                2px 2px 4px rgba(0,0,0,0.8);
+            animation: ballFloat 4s ease-in-out infinite;
+        }
+
+        @keyframes ballFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0px); }
+            50% { transform: translateX(-50%) translateY(-10px); }
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.856);
+            color: white;
+            display: none;
+            pointer-events: auto;
+            z-index: 20;
+        }
+
+        #gameOverContent {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 100%;
+        }
+
+        #gameOver h2 {
+            color: white;
+            margin-bottom: 30px;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #gameOver .scoreDisplay {
+            margin-bottom: 40px;
+        }
+
+        #gameOver .currentScore {
+            font-size: 72px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #gameOver .bestScore {
+            font-size: 36px;
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #restartBtn {
+            background: linear-gradient(to bottom, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 25px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 
+                0 4px 8px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.3),
+                0 0 0 2px rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #restartBtn:hover {
+            background: linear-gradient(to bottom, #45a049, #3d8b40);
+            transform: translateY(-2px);
+            box-shadow: 
+                0 6px 12px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.4),
+                0 0 0 2px rgba(255,255,255,0.3);
+        }
+
+        #restartBtn:active {
+            transform: translateY(0);
+            box-shadow: 
+                0 2px 4px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.2),
+                0 0 0 2px rgba(255,255,255,0.1);
+        }
+
+        #howToPlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            color: #333;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            pointer-events: auto;
+            max-width: 90%;
+        }
+
+        #howToPlay h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        #howToPlay .instruction {
+            margin-bottom: 15px;
+            color: #FF6B35;
+            font-size: 16px;
+        }
+
+        #closeBtn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: linear-gradient(to bottom, #ff4444, #cc3333);
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 
+                0 2px 4px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.3),
+                0 0 0 1px rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #closeBtn:hover {
+            background: linear-gradient(to bottom, #cc3333, #aa2222);
+            transform: translateY(-1px);
+            box-shadow: 
+                0 3px 6px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.4),
+                0 0 0 1px rgba(255,255,255,0.3);
+        }
+
+        #closeBtn:active {
+            transform: translateY(0);
+            box-shadow: 
+                0 1px 2px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.2),
+                0 0 0 1px rgba(255,255,255,0.1);
+        }
+
+        #handDemo {
+            position: absolute;
+            top: 70%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 80px;
+            pointer-events: none;
+        }
+
+        .demoBar {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            width: 100%;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 30px;
+        }
+
+        .demoHand {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.8));
+            animation: handMove 3s ease-in-out infinite;
+        }
+
+        @keyframes handMove {
+            0% { left: 0; }
+            50% { left: calc(100% - 40px); }
+            100% { left: 0; }
+        }
+
+        .demoText {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+            <div id="ui">
+
+            <div id="trophy"><img src="assets/score.png" alt="Score" class="trophy-icon"> <span>0</span></div>
+            <div id="comboCounter" style="display: none;">COMBO: <span id="comboValue">0</span></div>
+            <div id="musicControl" class="music-btn">
+                <img src="assets/music.png" alt="Music" class="music-icon" id="musicIcon">
+            </div>
+            
+            <div id="gameTitle">
+                <div class="titleColor">COLOUR</div>
+                <div class="titleRing">RING</div>
+            </div>
+            
+            <div id="startScreenElements">
+                <div id="demoRings">
+                    <div class="demoRing outer"></div>
+                    <div class="demoRing middle"></div>
+                    <div class="demoRing inner"></div>
+                </div>
+                <div id="demoBall"></div>
+            </div>
+            
+            <div id="handDemo">
+                <div class="demoBar"></div>
+                <img src="assets/hand.png" alt="Hand" class="demoHand" id="demoHand">
+                <div class="demoText">TAP ANYWHERE TO START</div>
+            </div>
+        
+        <div id="howToPlay">
+            <button id="closeBtn">×</button>
+            <h2>HOW TO PLAY</h2>
+            <div class="instruction">HIT THE COLORED WALL MATCHING THE BALL COLOR</div>
+            <div class="instruction">MOVE LEFT TO RIGHT TO CONTROL THE BALL</div>
+        </div>
+        
+        <div id="gameOver">
+            <div id="gameOverContent">
+                <h2>GAME OVER</h2>
+                <div class="scoreDisplay">
+                    <div class="currentScore" id="finalScore">0</div>
+                                         <div class="bestScore"><img src="assets/score.png" alt="Score" class="trophy-icon"> <span id="bestScore">0</span></div>
+                </div>
+                <button id="restartBtn">▶ PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="stars" id="stars"></div>
+
+    <script src="game.js"></script>
+</body>
+</html>
