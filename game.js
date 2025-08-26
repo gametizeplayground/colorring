@@ -63,6 +63,17 @@ class ColorRingGame {
         this.setupEventListeners();
         this.canvas.classList.add('menu-cursor');
         this.updateUI();
+        
+        // Ensure how to play shows on first visit (backup check)
+        if (!localStorage.getItem('colorRingFirstVisit')) {
+            setTimeout(() => {
+                const howToPlay = document.getElementById('howToPlay');
+                if (howToPlay) {
+                    howToPlay.style.display = 'block';
+                }
+            }, 200);
+        }
+        
         this.gameLoop();
     }
     
@@ -78,7 +89,7 @@ class ColorRingGame {
         
         // Mobile-optimized positioning
         const isMobile = window.innerWidth <= 768;
-        const centerYOffset = isMobile ? 30 : 50; // Move gameplay elements higher on mobile
+        const centerYOffset = isMobile ? 20 : 50; // Move gameplay elements higher on mobile
         this.centerY = (this.canvas.height / 2) + centerYOffset;
     }
     
@@ -225,7 +236,13 @@ class ColorRingGame {
         // Show how to play on first visit
         if (!localStorage.getItem('colorRingFirstVisit')) {
             localStorage.setItem('colorRingFirstVisit', 'true');
-            document.getElementById('howToPlay').style.display = 'block';
+            // Use setTimeout to ensure DOM is fully loaded
+            setTimeout(() => {
+                const howToPlay = document.getElementById('howToPlay');
+                if (howToPlay) {
+                    howToPlay.style.display = 'block';
+                }
+            }, 100);
         }
     }
     
