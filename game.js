@@ -498,13 +498,28 @@ class ColorRingGame {
                         if (ring.isRotating) {
                             startAngle += ring.currentRotation;
                             endAngle += ring.currentRotation;
+                            
+                            // Normalize angles to prevent precision issues
+                            startAngle = startAngle % (Math.PI * 2);
+                            endAngle = endAngle % (Math.PI * 2);
+                            
+                            // Ensure angles are positive
+                            if (startAngle < 0) startAngle += Math.PI * 2;
+                            if (endAngle < 0) endAngle += Math.PI * 2;
                         }
                         
-                        // Handle angle wrapping
+                        // Normalize ball angle to same range for comparison
+                        let adjustedBallAngle = normalizedAngle;
+                        
+                        // Handle angle wrapping for segments
                         if (startAngle > endAngle) {
-                            return normalizedAngle >= startAngle || normalizedAngle <= endAngle;
+                            // Segment crosses the 0/2π boundary
+                            return adjustedBallAngle >= startAngle || adjustedBallAngle <= endAngle;
                         } else {
-                            return normalizedAngle >= startAngle && normalizedAngle <= endAngle;
+                            // Normal segment within 0-2π range
+                            // Add small tolerance for floating-point precision
+                            const tolerance = 0.05; // About 3 degrees
+                            return adjustedBallAngle >= (startAngle - tolerance) && adjustedBallAngle <= (endAngle + tolerance);
                         }
                     });
                     
@@ -512,6 +527,17 @@ class ColorRingGame {
                         // Success - correct color hit
                         this.combo++;
                         this.maxCombo = Math.max(this.maxCombo, this.combo);
+                        
+                        // Debug logging for rotating rings
+                        if (ring.isRotating) {
+                            console.log('Hit rotating ring:', {
+                                ballColor: this.ball.color,
+                                segmentColor: hitSegment.color,
+                                rotation: ring.currentRotation,
+                                originalStart: hitSegment.startAngle,
+                                originalEnd: hitSegment.endAngle
+                            });
+                        }
                         
                         // Calculate combo bonus points
                         const basePoints = 1;
@@ -538,6 +564,21 @@ class ColorRingGame {
         continue;
                     } else if (!this.isGameOverTriggered) {
                         // Game over - wrong color hit (only trigger once)
+                        
+                        // Debug logging for collision detection
+                        console.log('Collision detected but wrong color:', {
+                            ballColor: this.ball.color,
+                            hitSegment: hitSegment ? hitSegment.color : 'none',
+                            ringRotating: ring.isRotating,
+                            rotation: ring.currentRotation,
+                            ballAngle: normalizedAngle,
+                            segments: ring.segments.map(seg => ({
+                                color: seg.color,
+                                start: seg.startAngle,
+                                end: seg.endAngle
+                            }))
+                        });
+                        
                         this.isGameOverTriggered = true;
                         this.combo = 0; // Reset combo on miss
                         this.updateComboDisplay(); // Hide combo counter
