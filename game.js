@@ -329,6 +329,17 @@ class ColorRingGame {
         const isMobile = window.innerWidth <= 768;
         const gameScale = isMobile ? 0.75 : 1; // 25% smaller on mobile
         
+        // Add rotation after 100 points with 30-40% probability
+        let isRotating = false;
+        let rotationSpeed = 0;
+        if (this.score >= 100) {
+            const rotationChance = Math.random();
+            if (rotationChance <= 0.35) { // 35% chance for rotation
+                isRotating = true;
+                rotationSpeed = (Math.random() * 0.02 + 0.005) * (Math.random() > 0.5 ? 1 : -1); // Reduced speed: 0.01 to 0.03 radians per frame
+            }
+        }
+        
         const ring = {
             segments: this.generateRingSegments(),
             z: 1000, // Start much further away
@@ -336,7 +347,10 @@ class ColorRingGame {
             thickness: 20 * gameScale,
             speed: this.ringSpeed,
             shake: 0, // Shake effect counter
-            shakeIntensity: 0 // Current shake intensity
+            shakeIntensity: 0, // Current shake intensity
+            isRotating: isRotating, // New rotation property
+            rotationSpeed: rotationSpeed, // Rotation speed in radians per frame
+            currentRotation: 0 // Current rotation angle
         };
         this.rings.push(ring);
     }
@@ -479,6 +493,12 @@ class ColorRingGame {
                     const hitSegment = ring.segments.find(seg => {
                         let startAngle = seg.startAngle;
                         let endAngle = seg.endAngle;
+                        
+                        // Apply rotation if the ring is rotating
+                        if (ring.isRotating) {
+                            startAngle += ring.currentRotation;
+                            endAngle += ring.currentRotation;
+                        }
                         
                         // Handle angle wrapping
                         if (startAngle > endAngle) {
@@ -881,17 +901,48 @@ class ColorRingGame {
                 ring.shakeIntensity *= 0.95; // Gradually reduce intensity
             }
             
+            // Apply rotation effect if active
+            if (ring.isRotating) {
+                ring.currentRotation += ring.rotationSpeed;
+                if (ring.currentRotation > Math.PI * 2) {
+                    ring.currentRotation -= Math.PI * 2;
+                } else if (ring.currentRotation < -Math.PI * 2) {
+                    ring.currentRotation += Math.PI * 2;
+                }
+            }
+            
             // Draw ring segments with solid colors - fully visible
             ring.segments.forEach(segment => {
-                // Solid color stroke only
                 this.ctx.strokeStyle = segment.color;
-                this.ctx.lineWidth = scaledThickness;
+                this.ctx.lineWidth = ring.thickness * scale;
                 this.ctx.lineCap = 'round';
+                
+                // Add glow effect for rotating rings
+                if (ring.isRotating) {
+                    this.ctx.shadowColor = segment.color;
+                    this.ctx.shadowBlur = 8;
+                } else {
+                    this.ctx.shadowBlur = 0;
+                }
+                
+                // Apply rotation if the ring is rotating
+                let startAngle = segment.startAngle;
+                let endAngle = segment.endAngle;
+                if (ring.isRotating) {
+                    startAngle += ring.currentRotation;
+                    endAngle += ring.currentRotation;
+                }
+                
                 this.ctx.beginPath();
                 this.ctx.arc(this.centerX + shakeOffsetX, this.centerY + shakeOffsetY, scaledRadius, 
-                    segment.startAngle, segment.endAngle);
+                    startAngle, endAngle);
                 this.ctx.stroke();
             });
+            
+            // Reset shadow for non-rotating rings
+            if (!ring.isRotating) {
+                this.ctx.shadowBlur = 0;
+            }
         });
     }
     
