@@ -21,21 +21,26 @@ class ColorRingGame {
         this.backgroundMusic.load();
         
         // Initialize music button state
+        this.isMusicMuted = false;
         this.updateMusicButton();
+        
+        // Mobile-optimized sizing
+        const isMobile = window.innerWidth <= 768;
+        const gameScale = isMobile ? 0.75 : 1; // 25% smaller on mobile
         
         this.ball = {
             x: 0,
             y: 0,
-            radius: 20,
+            radius: 20 * gameScale,
             color: '#FF6B35',
             angle: 0,
-            orbitRadius: 150,
+            orbitRadius: 150 * gameScale,
             trail: []
         };
         
         this.rings = [];
         this.ringSpeed = 6; // Start speed: 15 units/sec
-        this.maxRingSpeed = 10; // Cap speed at 12 units/sec
+        this.maxRingSpeed = 15; // Cap speed at 12 units/sec
         this.speedIncrement = 0.2; // +0.6 units/sec per hit
         this.ringSpawnTimer = 0;
         this.ringSpawnInterval = 80; // Spawn more frequently since they start further away
@@ -70,7 +75,11 @@ class ColorRingGame {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         this.centerX = this.canvas.width / 2;
-        this.centerY = (this.canvas.height / 2) + 50; // Move gameplay elements down by 80px
+        
+        // Mobile-optimized positioning
+        const isMobile = window.innerWidth <= 768;
+        const centerYOffset = isMobile ? 30 : 50; // Move gameplay elements higher on mobile
+        this.centerY = (this.canvas.height / 2) + centerYOffset;
     }
     
     createStars() {
@@ -238,6 +247,13 @@ class ColorRingGame {
         this.combo = 0;
         this.maxCombo = 0;
         
+        // Enable music on mobile when game starts (workaround for autoplay restrictions)
+        if (this.backgroundMusic.paused && !this.isMusicMuted) {
+            this.backgroundMusic.play().catch(e => {
+                console.log('Music autoplay failed:', e);
+            });
+        }
+        
         document.getElementById('handDemo').style.display = 'none';
         document.getElementById('startScreenElements').style.display = 'none';
         document.getElementById('gameOver').style.display = 'none';
@@ -292,11 +308,15 @@ class ColorRingGame {
     }
     
     spawnRing() {
+        // Mobile-optimized sizing
+        const isMobile = window.innerWidth <= 768;
+        const gameScale = isMobile ? 0.75 : 1; // 25% smaller on mobile
+        
         const ring = {
             segments: this.generateRingSegments(),
             z: 1000, // Start much further away
-            radius: 150,
-            thickness: 20,
+            radius: 150 * gameScale,
+            thickness: 20 * gameScale,
             speed: this.ringSpeed,
             shake: 0, // Shake effect counter
             shakeIntensity: 0 // Current shake intensity
@@ -1098,8 +1118,10 @@ class ColorRingGame {
             this.backgroundMusic.play().catch(error => {
                 console.log('Music play failed:', error);
             });
+            this.isMusicMuted = false;
         } else {
             this.backgroundMusic.pause();
+            this.isMusicMuted = true;
         }
     }
     
@@ -1109,7 +1131,7 @@ class ColorRingGame {
     
     updateMusicButton() {
         const musicBtn = document.getElementById('musicControl');
-        if (this.backgroundMusic.paused) {
+        if (this.isMusicMuted || this.backgroundMusic.paused) {
             musicBtn.classList.add('muted');
         } else {
             musicBtn.classList.remove('muted');
