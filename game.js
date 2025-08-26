@@ -13,12 +13,31 @@ class ColorRingGame {
         this.maxCombo = 0;
         
         // Background music
-        this.backgroundMusic = new Audio('assets/soundtrack.MP3');
+        this.backgroundMusic = new Audio('assets/soundtrack.mp3');
         this.backgroundMusic.loop = true;
         this.backgroundMusic.volume = 0.7; // Set volume to 70%
+        this.backgroundMusic.preload = 'auto'; // Ensure audio is preloaded
         
         // Preload music to ensure it's ready
         this.backgroundMusic.load();
+        
+        // Add error handling for audio loading
+        this.backgroundMusic.addEventListener('error', (e) => {
+            console.error('Audio loading error:', e);
+        });
+        
+        this.backgroundMusic.addEventListener('canplaythrough', () => {
+            console.log('Audio loaded successfully');
+        });
+        
+        // Handle audio context suspension (common on mobile)
+        this.backgroundMusic.addEventListener('suspend', () => {
+            console.log('Audio suspended');
+        });
+        
+        this.backgroundMusic.addEventListener('waiting', () => {
+            console.log('Audio waiting for data');
+        });
         
         // Initialize music button state
         this.isMusicMuted = false;
@@ -200,12 +219,24 @@ class ColorRingGame {
             if (this.gameState === 'menu') {
                 this.startGame();
             }
+            // Try to start music on first user interaction
+            if (this.backgroundMusic.paused && !this.isMusicMuted) {
+                this.backgroundMusic.play().catch(e => {
+                    console.log('Music start on click failed:', e);
+                });
+            }
         });
         
         this.canvas.addEventListener('touchstart', (e) => {
             if (this.gameState === 'menu') {
                 e.preventDefault();
                 this.startGame();
+            }
+            // Try to start music on first user interaction
+            if (this.backgroundMusic.paused && !this.isMusicMuted) {
+                this.backgroundMusic.play().catch(e => {
+                    console.log('Music start on touch failed:', e);
+                });
             }
         });
         
@@ -1221,6 +1252,9 @@ class ColorRingGame {
         if (this.backgroundMusic.paused) {
             this.backgroundMusic.play().catch(error => {
                 console.log('Music play failed:', error);
+                // If autoplay fails, try to play on next user interaction
+                this.isMusicMuted = true;
+                this.updateMusicButton();
             });
             this.isMusicMuted = false;
         } else {
@@ -1235,10 +1269,14 @@ class ColorRingGame {
     
     updateMusicButton() {
         const musicBtn = document.getElementById('musicControl');
+        const musicIcon = document.getElementById('musicIcon');
+        
         if (this.isMusicMuted || this.backgroundMusic.paused) {
             musicBtn.classList.add('muted');
+            musicIcon.style.filter = 'brightness(0) saturate(100%) invert(53%) sepia(0%) saturate(0%) hue-rotate(93deg) brightness(94%) contrast(88%)';
         } else {
             musicBtn.classList.remove('muted');
+            musicIcon.style.filter = 'brightness(0) saturate(100%) invert(83%) sepia(31%) saturate(638%) hue-rotate(359deg) brightness(103%) contrast(107%)';
         }
     }
     
