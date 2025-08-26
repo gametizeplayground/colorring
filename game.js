@@ -64,16 +64,6 @@ class ColorRingGame {
         this.canvas.classList.add('menu-cursor');
         this.updateUI();
         
-        // Ensure how to play shows on first visit (backup check)
-        if (!localStorage.getItem('colorRingFirstVisit')) {
-            setTimeout(() => {
-                const howToPlay = document.getElementById('howToPlay');
-                if (howToPlay) {
-                    howToPlay.style.display = 'block';
-                }
-            }, 200);
-        }
-        
         this.gameLoop();
     }
     
@@ -223,30 +213,15 @@ class ColorRingGame {
             this.restartGame();
         });
         
-        document.getElementById('closeBtn').addEventListener('click', () => {
-            document.getElementById('howToPlay').style.display = 'none';
-        });
-        
         // Music control button
         document.getElementById('musicControl').addEventListener('click', () => {
             this.toggleMusic();
             this.updateMusicButton();
         });
-        
-        // Show how to play on first visit
-        if (!localStorage.getItem('colorRingFirstVisit')) {
-            localStorage.setItem('colorRingFirstVisit', 'true');
-            // Use setTimeout to ensure DOM is fully loaded
-            setTimeout(() => {
-                const howToPlay = document.getElementById('howToPlay');
-                if (howToPlay) {
-                    howToPlay.style.display = 'block';
-                }
-            }, 100);
-        }
     }
     
     startGame() {
+        console.log('startGame called, setting gameState to playing'); // Debug log
         this.gameState = 'playing';
         this.score = 0;
         this.rings = [];
@@ -263,6 +238,8 @@ class ColorRingGame {
         this.isGameOverTriggered = false;
         this.combo = 0;
         this.maxCombo = 0;
+        
+        console.log('Game initialized - Ball pos:', this.ball.x, this.ball.y, 'Center:', this.centerX, this.centerY); // Debug log
         
         // Enable music on mobile when game starts (workaround for autoplay restrictions)
         if (this.backgroundMusic.paused && !this.isMusicMuted) {
@@ -449,6 +426,11 @@ class ColorRingGame {
         this.ball.x = this.centerX + Math.cos(this.ball.angle) * this.ball.orbitRadius;
         this.ball.y = this.centerY + Math.sin(this.ball.angle) * this.ball.orbitRadius;
         
+        // Debug ball position
+        if (this.gameState === 'playing') {
+            console.log('Ball position updated:', this.ball.x, this.ball.y, 'Center:', this.centerX, this.centerY, 'Angle:', this.ball.angle, 'Orbit radius:', this.ball.orbitRadius);
+        }
+        
         // Update fluid trail with elasticity
         this.updateFluidTrail();
         
@@ -473,6 +455,7 @@ class ColorRingGame {
         this.ringSpawnTimer++;
         if (this.ringSpawnTimer >= this.ringSpawnInterval) {
             this.spawnRing();
+            console.log('Ring spawned, total rings:', this.rings.length); // Debug log
             this.ringSpawnTimer = 0;
             this.ringSpawnInterval = Math.max(60, this.ringSpawnInterval - 0.5); // Gradual decrease
         }
@@ -482,8 +465,17 @@ class ColorRingGame {
             const ring = this.rings[i];
             ring.z -= ring.speed;
             
+            // Debug log for ring positions
+            if (this.rings.length > 0 && i === 0) {
+                console.log('First ring Z:', ring.z, 'Ball orbit radius:', this.ball.orbitRadius);
+            }
+            
             // Check collision when ring reaches the ball's orbit level
-            if (ring.z <= 150 && ring.z > 130) {
+            // Use dynamic collision zone based on ball's orbit radius
+            const collisionZoneStart = this.ball.orbitRadius + 20; // Slightly before orbit
+            const collisionZoneEnd = this.ball.orbitRadius - 20;   // Slightly after orbit
+            
+            if (ring.z <= collisionZoneStart && ring.z > collisionZoneEnd) {
                 if (this.checkCollision(ring)) {
                     // Find which segment the ball is hitting
                     const ballAngle = Math.atan2(this.ball.y - this.centerY, this.ball.x - this.centerX);
@@ -815,7 +807,7 @@ class ColorRingGame {
     }
     
     checkCollision(ring) {
-        const hitPlaneZ = 150;
+        const hitPlaneZ = this.ball.orbitRadius; // Use ball's orbit radius instead of hardcoded 150
         const scale = hitPlaneZ / ring.z;
         const scaledRadius = ring.radius * scale;
         
@@ -855,6 +847,9 @@ class ColorRingGame {
         // Clear canvas completely - no trail effects
         this.ctx.fillStyle = '#0f0f23';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Debug logging
+        console.log('Render - Game State:', this.gameState, 'Rings:', this.rings.length, 'Ball pos:', this.ball.x, this.ball.y);
         
         // Always draw stars and star trails (background effect for all screens)
         this.drawStars();
@@ -924,7 +919,7 @@ class ColorRingGame {
     
     drawRings() {
         this.rings.forEach(ring => {
-            const scale = 150 / ring.z;
+            const scale = this.ball.orbitRadius / ring.z; // Use ball's orbit radius instead of hardcoded 150
             const scaledRadius = ring.radius * scale;
             const scaledThickness = ring.thickness * scale;
             
